@@ -654,6 +654,40 @@ window.Clara = window.Clara || {};
       console.error("[Clara] Unexpected error in all-articles list logic:", err);
     });
   };
+  
+  // ----------------------------------------
+  // 5. LOGOUT BUTTON
+  // ----------------------------------------
+  Clara.initLogout = function () {
+    const logoutBtn = document.getElementById("logout-btn");
+    if (!logoutBtn) return; // Not on a page with a logout button
+
+    const supabase = getSupabaseOrWarn("Logout");
+    if (!supabase) return;
+
+    logoutBtn.addEventListener("click", async (event) => {
+      event.preventDefault();
+
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error("[Clara] Logout error:", error);
+          alert("There was a problem logging you out. Please try again.");
+          return;
+        }
+
+        // Clear any client-side state you rely on
+        sessionStorage.clear();
+        // If you later store app-specific data in localStorage, clear it here too
+
+        // Send the user back to the login page
+        window.location.href = "/login";
+      } catch (err) {
+        console.error("[Clara] Unexpected logout error:", err);
+        alert("There was a problem logging you out. Please try again.");
+      }
+    });
+  };
 
   // ----------------------------------------
   // DOM READY – RUN ALL INIT FUNCTIONS
@@ -664,8 +698,10 @@ window.Clara = window.Clara || {};
       Clara.initArticlePage && Clara.initArticlePage();
       Clara.initDashboard && Clara.initDashboard();
       Clara.initAllArticlesPage && Clara.initAllArticlesPage();
+      Clara.initLogout && Clara.initLogout(); // 🔹 NEW
     } catch (err) {
       console.error("[Clara] Error initialising Clara global JS:", err);
     }
   });
+
 })();
