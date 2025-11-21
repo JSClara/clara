@@ -57,19 +57,27 @@ window.Clara = window.Clara || {};
       }
 
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
 
-        if (error) {
-          console.error("Login error:", error);
-          if (errorBox) errorBox.textContent = error.message;
-          return;
-        }
+if (error) {
+  console.error("Login error:", error);
+  if (errorBox) errorBox.textContent = error.message;
+  return;
+}
 
-        // Success: redirect to dashboard
-        window.location.href = "/dashboard";
+// ✅ Mark the browser as "logged in" for the app
+try {
+  sessionStorage.setItem("clara_logged_in", "true");
+} catch (e) {
+  console.warn("[Clara Login] Could not write sessionStorage:", e);
+}
+
+// Success: redirect to dashboard
+window.location.href = "/dashboard";
+
       } catch (err) {
         console.error("[Clara] Unexpected login error:", err);
         if (errorBox) {
@@ -455,6 +463,23 @@ window.Clara = window.Clara || {};
     const supabase = getSupabaseOrWarn("Dashboard");
     if (!supabase) return;
 
+  // ❗ App-level guard: if our own "logged in" flag is missing,
+  // don't even try to render the dashboard – send to login.
+  try {
+    const loggedInFlag = sessionStorage.getItem("clara_logged_in");
+    if (loggedInFlag !== "true") {
+      console.log("[Clara Dashboard] No clara_logged_in flag, redirecting to /login");
+      window.location.href = "/login";
+      return;
+    }
+  } catch (e) {
+    console.warn("[Clara Dashboard] Could not read sessionStorage:", e);
+  }
+
+  const supabase = getSupabaseOrWarn("Dashboard");
+  if (!supabase) return;
+
+    
     // Helper to render a list of articles into a container
     function renderArticles(container, articles, emptyMessage) {
       if (!container) return;
@@ -655,50 +680,51 @@ window.Clara = window.Clara || {};
     });
   };
   
-    // ----------------------------------------
-  // 5. LOGOUT BUTTON (using the proven flow)
   // ----------------------------------------
-  Clara.initLogout = function () {
-    const logoutBtn = document.getElementById("logout-btn");
-    if (!logoutBtn) return; // Not on a page with a logout button
+// 5. LOGOUT BUTTON
+// ----------------------------------------
+Clara.initLogout = function () {
+  const logoutBtn = document.getElementById("logout-btn");
+  if (!logoutBtn) return; // Not on a page with a logout button
 
-    const supabase = getSupabaseOrWarn("Logout");
-    if (!supabase) return;
+  const supabase = getSupabaseOrWarn("Logout");
+  if (!supabase) return;
 
-    logoutBtn.addEventListener("click", async (event) => {
-      event.preventDefault();
+  logoutBtn.addEventListener("click", async (event) => {
+    event.preventDefault();
 
-      try {
-        console.log("[Clara Logout] Starting logout…");
+    try {
+      console.log("[Clara Logout] Starting logout…");
 
-        // 1) Proper Supabase logout (this worked in your debug test)
-        const { error: signOutError } = await supabase.auth.signOut({
-          scope: "global",
-        });
+      // 1) Tell Supabase to end the session (this worked in your debug page)
+      const { error: signOutError } = await supabase.auth.signOut({
+        scope: "global",
+      });
 
-        if (signOutError) {
-          console.error("[Clara Logout] signOut error:", signOutError);
-          alert("There was a problem logging you out. Please try again.");
-          return;
-        }
-
-        // 2) Clear any client-side app state you might have used before
-        try {
-          sessionStorage.clear();
-        } catch (e) {
-          console.warn("[Clara Logout] Error clearing sessionStorage:", e);
-        }
-
-        console.log("[Clara Logout] Logout complete, redirecting to /login");
-
-        // 3) Redirect to login – Supabase now has NO session
-        window.location.href = "/login";
-      } catch (err) {
-        console.error("[Clara Logout] Unexpected error:", err);
+      if (signOutError) {
+        console.error("[Clara Logout] signOut error:", signOutError);
         alert("There was a problem logging you out. Please try again.");
+        return;
       }
-    });
-  };
+
+      // 2) Clear the app's own "logged in" flag
+      try {
+        sessionStorage.removeItem("clara_logged_in");
+      } catch (e) {
+        console.warn("[Clara Logout] Error clearing sessionStorage:", e);
+      }
+
+      console.log("[Clara Logout] Logout complete, redirecting to /login");
+
+      // 3) Redirect to login
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("[Clara Logout] Unexpected error:", err);
+      alert("There was a problem logging you out. Please try again.");
+    }
+  });
+};
+
 
 
 
