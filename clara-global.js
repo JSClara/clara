@@ -655,8 +655,8 @@ window.Clara = window.Clara || {};
     });
   };
   
-  // ----------------------------------------
-  // 5. LOGOUT BUTTON
+    // ----------------------------------------
+  // 5. LOGOUT BUTTON (using the proven flow)
   // ----------------------------------------
   Clara.initLogout = function () {
     const logoutBtn = document.getElementById("logout-btn");
@@ -669,40 +669,37 @@ window.Clara = window.Clara || {};
       event.preventDefault();
 
       try {
-        console.log("[Clara] Logout clicked");
+        console.log("[Clara Logout] Starting logout…");
 
-        // Check current user before logout (for debugging)
-        const { data: beforeData, error: beforeError } =
-          await supabase.auth.getUser();
-        console.log("[Clara] User BEFORE signOut:", beforeData, beforeError);
-
-        // Supabase v2 – global sign out to clear all sessions
+        // 1) Proper Supabase logout (this worked in your debug test)
         const { error: signOutError } = await supabase.auth.signOut({
           scope: "global",
         });
 
         if (signOutError) {
-          console.error("[Clara] Logout error:", signOutError);
+          console.error("[Clara Logout] signOut error:", signOutError);
           alert("There was a problem logging you out. Please try again.");
           return;
         }
 
-        // Check user after logout (for debugging)
-        const { data: afterData, error: afterError } =
-          await supabase.auth.getUser();
-        console.log("[Clara] User AFTER signOut:", afterData, afterError);
+        // 2) Clear any client-side app state you might have used before
+        try {
+          sessionStorage.clear();
+        } catch (e) {
+          console.warn("[Clara Logout] Error clearing sessionStorage:", e);
+        }
 
-        // Clear any client-side state
-        sessionStorage.clear();
+        console.log("[Clara Logout] Logout complete, redirecting to /login");
 
-        // Finally, go to login page
+        // 3) Redirect to login – Supabase now has NO session
         window.location.href = "/login";
       } catch (err) {
-        console.error("[Clara] Unexpected logout error:", err);
+        console.error("[Clara Logout] Unexpected error:", err);
         alert("There was a problem logging you out. Please try again.");
       }
     });
   };
+
 
 
   // ----------------------------------------
@@ -714,10 +711,11 @@ window.Clara = window.Clara || {};
       Clara.initArticlePage && Clara.initArticlePage();
       Clara.initDashboard && Clara.initDashboard();
       Clara.initAllArticlesPage && Clara.initAllArticlesPage();
-      Clara.initLogout && Clara.initLogout(); // 🔹 NEW
+      Clara.initLogout && Clara.initLogout(); // this stays
     } catch (err) {
       console.error("[Clara] Error initialising Clara global JS:", err);
     }
   });
+
 
 })();
