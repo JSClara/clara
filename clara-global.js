@@ -669,18 +669,33 @@ window.Clara = window.Clara || {};
       event.preventDefault();
 
       try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.error("[Clara] Logout error:", error);
+        console.log("[Clara] Logout clicked");
+
+        // Check current user before logout (for debugging)
+        const { data: beforeData, error: beforeError } =
+          await supabase.auth.getUser();
+        console.log("[Clara] User BEFORE signOut:", beforeData, beforeError);
+
+        // Supabase v2 – global sign out to clear all sessions
+        const { error: signOutError } = await supabase.auth.signOut({
+          scope: "global",
+        });
+
+        if (signOutError) {
+          console.error("[Clara] Logout error:", signOutError);
           alert("There was a problem logging you out. Please try again.");
           return;
         }
 
-        // Clear any client-side state you rely on
-        sessionStorage.clear();
-        // If you later store app-specific data in localStorage, clear it here too
+        // Check user after logout (for debugging)
+        const { data: afterData, error: afterError } =
+          await supabase.auth.getUser();
+        console.log("[Clara] User AFTER signOut:", afterData, afterError);
 
-        // Send the user back to the login page
+        // Clear any client-side state
+        sessionStorage.clear();
+
+        // Finally, go to login page
         window.location.href = "/login";
       } catch (err) {
         console.error("[Clara] Unexpected logout error:", err);
@@ -688,6 +703,7 @@ window.Clara = window.Clara || {};
       }
     });
   };
+
 
   // ----------------------------------------
   // DOM READY – RUN ALL INIT FUNCTIONS
